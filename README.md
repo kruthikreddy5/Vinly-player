@@ -1,2 +1,0 @@
-# Vinly-player
-Vinly player 
