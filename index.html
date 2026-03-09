@@ -71,7 +71,7 @@ function sendMsg() {
         throw new Error('HTTP ' + xhr.status + ': ' + (data.error ? data.error.message : xhr.responseText.slice(0, 150)));
       }
       var reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      if (!reply) throw new Error('Empty reply. Raw: ' + xhr.responseText.slice(0, 150));
+      if (!reply) throw new Error('Empty reply. Raw response: ' + xhr.responseText.slice(0, 300));
       thinking.textContent = reply;
       history.push({ role: 'assistant', content: reply });
     } catch(e) {
@@ -99,7 +99,7 @@ function sendMsg() {
 
   try {
     xhr.send(JSON.stringify({
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: 'google/gemma-3-12b-it:free',
       messages: messages,
       max_tokens: 1024
     }));
