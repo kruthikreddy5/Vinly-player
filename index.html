@@ -112,7 +112,7 @@ display: flex; flex-direction: column; gap: 12px;
       <label>Your Name (optional)</label>
       <input type="text" id="s-name" placeholder="What should Signal call you?" />
     </div>
-    <button class="btn-save" onclick="saveSettings()">Save</button>
+    <button class="btn-save" id="btn-save">Save</button>
     <p class="mnote">Free key at <a href="https://openrouter.ai" target="_blank">openrouter.ai</a></p>
   </div>
 </div>
@@ -121,8 +121,8 @@ display: flex; flex-direction: column; gap: 12px;
   <h1>⚡ Signal</h1>
   <div style="display:flex;align-items:center;gap:8px;">
     <span id="status">ready</span>
-    <button class="icon-btn" onclick="openSettings()">⚙️</button>
-    <button class="icon-btn" onclick="clearChat()">🗑️</button>
+    <button class="icon-btn" id="btn-settings">⚙️</button>
+    <button class="icon-btn" id="btn-clear">🗑️</button>
   </div>
 </div>
 
@@ -131,10 +131,10 @@ display: flex; flex-direction: column; gap: 12px;
     <h2>Signal</h2>
     <p>Your personal AI assistant.<br>Ask me anything.</p>
     <div class="chips">
-      <div class="chip" onclick="quickSend('Help me write an email')">✉️ Write an email</div>
-      <div class="chip" onclick="quickSend('Debug my code')">🐛 Debug code</div>
-      <div class="chip" onclick="quickSend('Help me plan a project')">📋 Plan a project</div>
-      <div class="chip" onclick="quickSend('What can you help me with?')">💡 What can you do?</div>
+      <div class="chip" data-msg="Help me write an email">✉️ Write an email</div>
+      <div class="chip" data-msg="Debug my code">🐛 Debug code</div>
+      <div class="chip" data-msg="Help me plan a project">📋 Plan a project</div>
+      <div class="chip" data-msg="What can you help me with?">💡 What can you do?</div>
     </div>
   </div>
 </div>
@@ -142,7 +142,7 @@ display: flex; flex-direction: column; gap: 12px;
 <div id="input-area">
   <div id="input-row">
     <textarea id="msg-input" placeholder="Message Signal..." rows="1"></textarea>
-    <button id="send-btn" onclick="send()">
+    <button id="send-btn">
       <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
     </button>
   </div>
@@ -158,6 +158,20 @@ var apiKey   = localStorage.getItem('sig_key')  || API_KEY;
 var userName = localStorage.getItem('sig_name') || '';
 var history  = [];
 var busy     = false;
+
+// ── ATTACH ALL EVENTS AFTER DOM READY ──
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('send-btn').addEventListener('click', send);
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-clear').addEventListener('click', clearChat);
+  document.getElementById('btn-save').addEventListener('click', saveSettings);
+
+  // chip clicks
+  document.getElementById('chat').addEventListener('click', function(e) {
+    var chip = e.target.closest('[data-msg]');
+    if (chip) quickSend(chip.getAttribute('data-msg'));
+  });
+});
 
 var ta = document.getElementById('msg-input');
 ta.addEventListener('input', function() {
@@ -307,7 +321,7 @@ return t;
 function clearChat() {
 if (!confirm(‘Clear conversation?’)) return;
 history = [];
-document.getElementById(‘chat’).innerHTML = ‘<div class="welcome" id="welcome"><h2>Signal</h2><p>Your personal AI assistant.<br>Ask me anything.</p><div class="chips"><div class="chip" onclick="quickSend(\'Help me write an email\')">✉️ Write an email</div><div class="chip" onclick="quickSend(\'Debug my code\')">🐛 Debug code</div><div class="chip" onclick="quickSend(\'Help me plan a project\')">📋 Plan a project</div></div></div>’;
+document.getElementById(‘chat’).innerHTML = ‘<div class="welcome" id="welcome"><h2>Signal</h2><p>Your personal AI assistant.<br>Ask me anything.</p><div class="chips"><div class="chip" data-msg="Help me write an email">✉️ Write an email</div><div class="chip" data-msg="Debug my code">🐛 Debug code</div><div class="chip" data-msg="Help me plan a project">📋 Plan a project</div></div></div>’;
 }
 
 function setBusy(val) {
@@ -323,4 +337,4 @@ setTimeout(function() { c.scrollTop = c.scrollHeight; }, 50);
 </script>
 
 </body>
-</html>
+  </html>
