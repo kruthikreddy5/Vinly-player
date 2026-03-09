@@ -1,125 +1,220 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Signal</title>
+
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: sans-serif; background: #111; color: #eee; display: flex; flex-direction: column; height: 100vh; }
-  #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .u { align-self: flex-end; background: #005577; padding: 10px 14px; border-radius: 12px; max-width: 85%; white-space: pre-wrap; word-break: break-word; }
-  .a { align-self: flex-start; background: #1e1e1e; border: 1px solid #333; padding: 10px 14px; border-radius: 12px; max-width: 85%; white-space: pre-wrap; word-break: break-word; }
-  .err { align-self: flex-start; background: #3a0000; border: 1px solid #f44; color: #f99; padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
-  #bar { display: flex; gap: 8px; padding: 12px; background: #1a1a1a; border-top: 1px solid #333; }
-  #box { flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 10px; color: #eee; font-size: 15px; font-family: sans-serif; resize: none; outline: none; }
-  #go { background: #00c2ff; color: #000; border: none; border-radius: 8px; padding: 10px 20px; font-size: 15px; font-weight: bold; cursor: pointer; }
-  #go:disabled { background: #444; color: #888; }
+
+*{
+box-sizing:border-box;
+margin:0;
+padding:0;
+}
+
+body{
+font-family: monospace;
+background:#0f0f0f;
+color:#e6e6e6;
+height:100vh;
+display:flex;
+flex-direction:column;
+}
+
+/* header */
+
+#header{
+padding:14px 20px;
+border-bottom:1px solid #222;
+font-size:14px;
+letter-spacing:1px;
+opacity:.8;
+}
+
+/* chat area */
+
+#chat{
+flex:1;
+overflow-y:auto;
+padding:25px;
+display:flex;
+flex-direction:column;
+gap:14px;
+}
+
+/* bubbles */
+
+.msg{
+max-width:75%;
+padding:12px 14px;
+border-radius:10px;
+line-height:1.4;
+white-space:pre-wrap;
+}
+
+.user{
+align-self:flex-end;
+background:#1f2937;
+}
+
+.bot{
+align-self:flex-start;
+background:#151515;
+border:1px solid #2a2a2a;
+}
+
+/* typing animation */
+
+.typing::after{
+content:"...";
+animation:dots 1.2s infinite;
+}
+
+@keyframes dots{
+0%{content:"."}
+33%{content:".."}
+66%{content:"..."}
+}
+
+/* input bar */
+
+#inputBar{
+display:flex;
+gap:10px;
+padding:14px;
+border-top:1px solid #222;
+background:#0f0f0f;
+}
+
+#input{
+flex:1;
+background:#111;
+border:1px solid #2a2a2a;
+color:#eee;
+padding:10px;
+border-radius:8px;
+resize:none;
+outline:none;
+font-family:monospace;
+}
+
+#send{
+background:#e6e6e6;
+color:#000;
+border:none;
+padding:10px 16px;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+}
+
+#send:disabled{
+opacity:.4;
+cursor:not-allowed;
+}
+
 </style>
 </head>
+
 <body>
 
-<div id="log">
-  <div class="a">Hi! I'm Signal. Type a message and tap Send.</div>
+<div id="header">
+Signal — personal AI
 </div>
 
-<div id="bar">
-  <textarea id="box" rows="2" placeholder="Type here..."></textarea>
-  <button id="go">Send</button>
+<div id="chat">
+<div class="msg bot">Hello. I'm Signal. Ask me anything.</div>
+</div>
+
+<div id="inputBar">
+<textarea id="input" rows="1" placeholder="Type a message..."></textarea>
+<button id="send">Send</button>
 </div>
 
 <script>
-// Your OpenRouter key
-var KEY = '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';
 
-// We use the Anthropic Claude API via claude.ai's artifact proxy instead
-// Actually use a simple XMLHttpRequest which bypasses some CORS issues
-var history = [];
+const API_KEY = "YOUR_OPENROUTER_KEY";
+const MODEL = "meta-llama/llama-3.1-8b-instruct:free";
 
-document.getElementById('go').addEventListener('click', sendMsg);
-document.getElementById('box').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const send = document.getElementById("send");
+
+let history = [];
+
+send.onclick = sendMessage;
+
+input.addEventListener("keydown", e=>{
+if(e.key==="Enter" && !e.shiftKey){
+e.preventDefault();
+sendMessage();
+}
 });
 
-function sendMsg() {
-  var box = document.getElementById('box');
-  var text = box.value.trim();
-  if (!text) return;
-  box.value = '';
-
-  addDiv('u', text);
-  history.push({ role: 'user', content: text });
-
-  var thinking = addDiv('a', 'Thinking...');
-  document.getElementById('go').disabled = true;
-
-  var messages = [{ role: 'system', content: 'You are Signal, a helpful personal AI assistant. Be concise and useful.' }].concat(history);
-
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', 'https://openrouter.ai/api/v1/chat/completions', true);
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.setRequestHeader('Authorization', 'Bearer ' + KEY);
-  xhr.setRequestHeader('HTTP-Referer', location.href);
-  xhr.setRequestHeader('X-Title', 'Signal');
-
-  xhr.onload = function() {
-    document.getElementById('go').disabled = false;
-    try {
-      var data = JSON.parse(xhr.responseText);
-      if (xhr.status !== 200) {
-        throw new Error('HTTP ' + xhr.status + ': ' + (data.error ? data.error.message : xhr.responseText.slice(0, 150)));
-      }
-      var reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      if (!reply) throw new Error('Empty reply. Raw response: ' + xhr.responseText.slice(0, 300));
-      thinking.textContent = reply;
-      history.push({ role: 'assistant', content: reply });
-    } catch(e) {
-      thinking.remove();
-      addDiv('err', 'ERROR: ' + e.message);
-      history.pop();
-    }
-  };
-
-  xhr.onerror = function() {
-    document.getElementById('go').disabled = false;
-    thinking.remove();
-    addDiv('err', 'Network error — cannot reach OpenRouter.\n\nMake sure you are on the internet and try again.\n\nStatus: ' + xhr.status);
-    history.pop();
-  };
-
-  xhr.ontimeout = function() {
-    document.getElementById('go').disabled = false;
-    thinking.remove();
-    addDiv('err', 'Request timed out. Check your connection.');
-    history.pop();
-  };
-
-  xhr.timeout = 30000;
-
-  try {
-    xhr.send(JSON.stringify({
-      model: 'google/gemma-3-12b-it:free',
-      messages: messages,
-      max_tokens: 1024
-    }));
-  } catch(e) {
-    document.getElementById('go').disabled = false;
-    thinking.remove();
-    addDiv('err', 'Send failed: ' + e.message);
-    history.pop();
-  }
+function addMessage(text,cls){
+const div=document.createElement("div");
+div.className="msg "+cls;
+div.innerText=text;
+chat.appendChild(div);
+chat.scrollTop=chat.scrollHeight;
+return div;
 }
 
-function addDiv(cls, text) {
-  var log = document.getElementById('log');
-  var div = document.createElement('div');
-  div.className = cls;
-  div.textContent = text;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-  return div;
+async function sendMessage(){
+
+const text=input.value.trim();
+if(!text) return;
+
+input.value="";
+
+addMessage(text,"user");
+
+history.push({role:"user",content:text});
+
+send.disabled=true;
+
+const thinking=addMessage("thinking","bot typing");
+
+try{
+
+const res=await fetch("https://openrouter.ai/api/v1/chat/completions",{
+method:"POST",
+headers:{
+"Authorization":"Bearer "+API_KEY,
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+model:MODEL,
+messages:[
+{role:"system",content:"You are Signal, a helpful minimal AI assistant."},
+...history
+]
+})
+});
+
+const data=await res.json();
+
+const reply=data.choices[0].message.content;
+
+thinking.remove();
+
+addMessage(reply,"bot");
+
+history.push({role:"assistant",content:reply});
+
+}catch(err){
+
+thinking.remove();
+
+addMessage("Error contacting AI.","bot");
+
 }
+
+send.disabled=false;
+
+}
+
 </script>
 
 </body>
