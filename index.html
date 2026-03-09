@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Signal</title>
 <style>
+*{box-sizing:border-box;}
 body{
 background:#0f0f0f;
 color:#e6e6e6;
@@ -31,16 +32,10 @@ max-width:75%;
 padding:12px;
 border-radius:10px;
 white-space:pre-wrap;
+word-break:break-word;
 }
-.user{
-background:#1f2937;
-align-self:flex-end;
-}
-.bot{
-background:#151515;
-border:1px solid #2a2a2a;
-align-self:flex-start;
-}
+.user{background:#1f2937;align-self:flex-end;}
+.bot{background:#151515;border:1px solid #2a2a2a;align-self:flex-start;}
 #inputBar{
 display:flex;
 gap:10px;
@@ -55,18 +50,69 @@ color:white;
 padding:10px;
 border-radius:8px;
 font-family:monospace;
+font-size:14px;
 }
 #send{
 background:white;
+color:black;
 border:none;
 padding:10px 15px;
 border-radius:8px;
 cursor:pointer;
 font-family:monospace;
 }
+
+/* Key setup screen */
+#setup{
+position:fixed;
+inset:0;
+background:#0f0f0f;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+padding:30px;
+gap:16px;
+z-index:99;
+}
+#setup h2{margin:0;font-size:18px;}
+#setup p{margin:0;opacity:.5;font-size:13px;text-align:center;}
+#keyInput{
+width:100%;
+max-width:400px;
+background:#111;
+border:1px solid #444;
+color:white;
+padding:12px;
+border-radius:8px;
+font-family:monospace;
+font-size:13px;
+}
+#saveKey{
+background:white;
+color:black;
+border:none;
+padding:12px 24px;
+border-radius:8px;
+cursor:pointer;
+font-family:monospace;
+font-size:14px;
+width:100%;
+max-width:400px;
+}
+#keyError{color:#ff6b6b;font-size:13px;display:none;}
 </style>
 </head>
 <body>
+
+<!-- Setup screen -->
+<div id="setup">
+  <h2>Signal — personal AI</h2>
+  <p>Paste your OpenRouter API key to get started.<br>It's saved only on this device.</p>
+  <input id="keyInput" type="password" placeholder="sk-or-v1-...">
+  <div id="keyError">Key must start with sk-or-v1-</div>
+  <button id="saveKey">Start chatting →</button>
+</div>
 
 <div id="header">Signal — personal AI</div>
 <div id="chat"></div>
@@ -76,15 +122,30 @@ font-family:monospace;
 </div>
 
 <script>
-// ✅ No Worker needed — calls OpenRouter directly
-const OPENROUTER_API_KEY = "sk-or-v1-PASTE-YOUR-NEW-KEY-HERE";
-const MODEL = "openai/gpt-3.5-turbo"; // free model on OpenRouter
+let API_KEY = localStorage.getItem("signal_key") || "";
+let history = JSON.parse(localStorage.getItem("signal_memory")) || [];
 
+const setup = document.getElementById("setup");
+const keyInput = document.getElementById("keyInput");
+const saveKey = document.getElementById("saveKey");
+const keyError = document.getElementById("keyError");
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const send = document.getElementById("send");
 
-let history = JSON.parse(localStorage.getItem("signal_memory")) || [];
+// If key already saved, skip setup
+if (API_KEY) setup.style.display = "none";
+
+saveKey.onclick = () => {
+  const val = keyInput.value.trim();
+  if (!val.startsWith("sk-or-")) {
+    keyError.style.display = "block";
+    return;
+  }
+  API_KEY = val;
+  localStorage.setItem("signal_key", API_KEY);
+  setup.style.display = "none";
+};
 
 function add(text, cls) {
   let div = document.createElement("div");
@@ -95,9 +156,7 @@ function add(text, cls) {
   return div;
 }
 
-history.forEach(m => {
-  add(m.content, m.role === "user" ? "user" : "bot");
-});
+history.forEach(m => add(m.content, m.role === "user" ? "user" : "bot"));
 
 async function sendMessage() {
   let text = input.value.trim();
@@ -115,16 +174,15 @@ async function sendMessage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${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}`,
+        "Authorization": `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: "openai/gpt-3.5-turbo",
         messages: history
       })
     });
 
     let data = await res.json();
-
     if (data.error) throw new Error(data.error.message);
 
     let reply = data.choices[0].message.content;
@@ -148,6 +206,5 @@ input.addEventListener("keydown", e => {
   if (e.key === "Enter") sendMessage();
 });
 </script>
-
 </body>
 </html>
